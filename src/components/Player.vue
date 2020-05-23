@@ -8,7 +8,7 @@
 			<div class="container-slider grey darken-4 d-flex">
 				<span>{{currentTime}}</span>
 				<v-slider
-					@mousedown="(e) => {mouseEnter(e)}"
+					@mousedown="(e) => {handleMouseEnter(e)}"
 					@change="handleSlide"
 					:value="seek"
 					:max="duration"
@@ -74,24 +74,17 @@ export default Vue.extend({
 		intervalWatch: 0,
 		intervalMount: 0,
 	}),
+
 	watch: {
 		index() {
 			this.playPause();
 		},
+
 		playing(isPlay) {
 			if (isPlay) {
-				this.intervalWatch = setInterval(() => {
-					this.seek++;
-					this.timer = this.fancyTimeFormat(this.sound.seek());
-				}, 1000);
+				this.startTime();
 			} else {
-				if (
-					typeof this.intervalWatch === 'number' &&
-					typeof this.intervalMount === 'number'
-				) {
-					clearInterval(this.intervalWatch);
-					clearInterval(this.intervalMount);
-				}
+				this.clearTime();
 			}
 		},
 	},
@@ -107,57 +100,100 @@ export default Vue.extend({
 	},
 
 	methods: {
-		repeat() {
-			this.loop = !this.loop;
+		initMusic() {
+			if (this.change) {
+				this.sound = new Howl({ src: this.list[this.index] });
+				this.change = false;
+			}
+
+			this.sound.play();
+			this.sound.on('play', () => {
+				this.playing = true;
+				this.duration = this.sound.duration();
+			});
 		},
-		skipMusic(change: string) {
-			if (change === 'next') this.list.length - 1 > this.index && this.index++;
-			if (change === 'previous') this.index >= 1 && this.index--;
+
+		resetMusic() {
 			this.seek = 0;
 			this.timer = '0:00';
 			this.playing = false;
-			this.sound.pause();
-			this.change = true;
 		},
-		mouseEnter(event: any) {
+
+		pauseMusic() {
+			this.sound.pause();
 			this.playing = false;
 		},
 
-		mouseLeave(event: any) {
+		stopMusic() {
+			this.sound.stop();
+			this.playing = false;
+		},
+
+		endMusic() {
+			this.sound.on('end', () => {
+				this.resetMusic();
+				if (this.list.length > 1) {
+					this.skipMusic('next');
+				}
+
+				if (this.loop) {
+					this.sound.play();
+					this.playing = true;
+					this.duration = this.sound.duration();
+				}
+			});
+		},
+
+		skipMusic(change: string) {
+			if (change === 'next') this.list.length - 1 > this.index && this.index++;
+			if (change === 'previous') this.index >= 1 && this.index--;
+			this.resetMusic();
+			this.stopMusic();
+			this.change = true;
+		},
+
+		playPause() {
+			if (this.sound.playing()) {
+				this.pauseMusic();
+			} else {
+				this.initMusic();
+				this.endMusic();
+			}
+		},
+
+		startTime() {
+			this.intervalWatch = setInterval(() => {
+				this.seek++;
+				this.timer = this.fancyTimeFormat(this.sound.seek());
+			}, 1000);
+		},
+
+		clearTime() {
+			if (
+				typeof this.intervalWatch === 'number' &&
+				typeof this.intervalMount === 'number'
+			) {
+				clearInterval(this.intervalWatch);
+				clearInterval(this.intervalMount);
+			}
+		},
+
+		repeat() {
+			this.loop = !this.loop;
+		},
+
+		handleMouseEnter() {
+			this.playing = false;
+		},
+
+		handleMouseLeave() {
 			this.playing = true;
 		},
 
 		handleSlide(e: any) {
 			this.sound.seek(e);
 			this.seek = e;
-			this.mouseLeave(e);
-		},
-
-		playPause() {
-			if (this.sound.playing()) {
-				this.sound.pause();
-				this.playing = false;
-			} else {
-				if (this.change) {
-					this.sound = new Howl({ src: this.list[this.index] });
-					this.change = false;
-				}
-				this.sound.play();
-				this.sound.on('play', () => {
-					this.playing = true;
-					this.duration = this.sound.duration();
-				});
-				this.sound.on('end', () => {
-					this.seek = 0;
-					this.timer = '0:00';
-					this.playing = false;
-					if (this.loop) {
-						this.sound.play();
-						this.playing = true;
-						this.duration = this.sound.duration();
-					}
-				});
-			}
+			this.handleMouseLeave();
 		},
 
 		fancyTimeFormat(time: number | Howl) {
