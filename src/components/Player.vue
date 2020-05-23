@@ -6,20 +6,26 @@
 			tile
 		>
 			<div class="grey darken-4">
-				<v-slider color="green" track-color="grey" always-dirty min="40" max="218"></v-slider>
+				<v-slider
+					@mousedown="(e) => {mouseEnter(e)}"
+					@change="handleSlide"
+					:value="seek"
+					:max="duration"
+					color="green"
+					track-color="grey"
+				></v-slider>
 			</div>
 
 			<div class="pb-5 white--text d-flex flex-row justify-space-between">
 				<div>album</div>
 				<div class="player__controls">
-					<v-icon
-						v-for="icon in icons"
-						:key="icon.type"
-						:class="`player__button--${icon.type}`"
-						medium
-						:color="style"
-						v-bind="icon.size"
-					>{{icon.type}}</v-icon>
+					<span>{{currentTime}}</span>
+					<v-icon class="player__button--replay" medium :color="style">replay</v-icon>
+					<v-icon large :color="style">skip_previous</v-icon>
+					<v-icon @click="playPause" x-large :color="style">play_circle_filled</v-icon>
+					<v-icon large :color="style">skip_next</v-icon>
+					<v-icon class="player__button--volume_up" medium :color="style">volume_up</v-icon>
+					<span>{{totalTime}} {{playing}}</span>
 				</div>
 				<div></div>
 			</div>
@@ -27,20 +33,121 @@
 	</v-footer>
 </template>
 
-<script>
+<script lang="ts">
 import Vue from 'vue';
+import { Howl } from 'howler';
+
+interface PlayerSound {
+	style: string;
+	sound: Howl;
+	playing: boolean;
+	timer: string;
+	duration: number;
+	seek: number;
+	mouseRef: any;
+	intervalWatch: number | NodeJS.Timeout;
+	intervalMount: number | NodeJS.Timeout;
+}
+
 export default Vue.extend({
 	name: 'Player',
-	data: () => ({
+	data: (): PlayerSound => ({
 		style: 'green darken-2',
-		icons: [
-			{ type: 'replay', size: { medium: 'medium' } },
-			{ type: 'skip_previous', size: { large: 'large' } },
-			{ type: 'play_circle_filled', size: { 'x-large': 'x-large' } },
-			{ type: 'skip_next', size: { large: 'large' } },
-			{ type: 'volume_up', size: { medium: 'medium' } },
-		],
+		sound: new Howl({ src: require('../assets/musics/sound.mp3') }),
+		playing: false,
+		timer: '0:00',
+		duration: 0,
+		seek: 0,
+		mouseRef: null,
+		intervalWatch: 0,
+		intervalMount: 0,
 	}),
+	watch: {
+		playing(isPlay) {
+			if (isPlay) {
+				this.intervalWatch = setInterval(() => {
+					this.seek++;
+					this.timer = this.fancyTimeFormat(this.sound.seek());
+				}, 1000);
+			} else {
+				if (
+					typeof this.intervalWatch === 'number' &&
+					typeof this.intervalMount === 'number'
+				) {
+					clearInterval(this.intervalWatch);
+					clearInterval(this.intervalMount);
+				}
+			}
+		},
+	},
+
+	mounted() {
+		this.sound.on('end', () => {
+			this.seek = 0;
+			this.timer = '0:00';
+			this.playing = false;
+		});
+	},
+
+	computed: {
+		totalTime(): string {
+			return this.fancyTimeFormat(this.sound.duration());
+		},
+
+		currentTime(): string {
+			return this.timer;
+		},
+	},
+
+	methods: {
+		mouseEnter(event: any) {
+			this.playing = false;
+			// 	this.playing = true;
+			// }, 10000);
+		},
+
+		mouseLeave(event: any) {
+			this.playing = true;
+		},
+
+		handleSlide(e: any) {
+			this.sound.seek(e);
+			this.seek = e;
+			this.mouseLeave(e);
+		},
+
+		playPause() {
+			if (this.sound.playing()) {
+				this.sound.pause();
+				this.playing = false;
+			} else {
+				this.sound.play();
+				this.sound.on('play', () => {
+					this.playing = true;
+					this.duration = this.sound.duration();
+				});
+			}
+		},
+
+		fancyTimeFormat(time: number | Howl) {
+			let ret = '';
+			if (typeof time === 'number') {
+				const hrs = ~~(time / 3600);
+				const mins = ~~((time % 3600) / 60);
+				const secs = ~~time % 60;
+
+				if (hrs > 0) {
+					ret += '' + hrs + ':' + (mins < 10 ? '0' : '');
+				}
+
+				ret += '' + mins + ':' + (secs < 10 ? '0' : '');
+				ret += '' + secs;
+
+				return ret;
+			}
+			return ret;
+		},
+	},
 });
 </script>
 
