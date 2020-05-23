@@ -5,7 +5,8 @@
 			flat
 			tile
 		>
-			<div class="grey darken-4">
+			<div class="container-slider grey darken-4 d-flex">
+				<span>{{currentTime}}</span>
 				<v-slider
 					@mousedown="(e) => {mouseEnter(e)}"
 					@change="handleSlide"
@@ -14,18 +15,17 @@
 					color="green"
 					track-color="grey"
 				></v-slider>
+				<span>{{totalTime}}</span>
 			</div>
 
 			<div class="pb-5 white--text d-flex flex-row justify-space-between">
 				<div>album</div>
 				<div class="player__controls">
-					<span>{{currentTime}}</span>
-					<v-icon class="player__button--replay" medium :color="style">replay</v-icon>
+					<v-icon @click="repeat" class="player__button--replay" medium :color="style">replay</v-icon>
 					<v-icon @click="() => skipMusic('previous')" large :color="style">skip_previous</v-icon>
 					<v-icon @keypress="playPause" @click="playPause" x-large :color="style">play_circle_filled</v-icon>
 					<v-icon @click="() => skipMusic('next')" large :color="style">skip_next</v-icon>
 					<v-icon class="player__button--volume_up" medium :color="style">volume_up</v-icon>
-					<span>{{totalTime}} {{playing}}</span>
 				</div>
 				<div></div>
 			</div>
@@ -49,6 +49,7 @@ interface PlayerSound {
 	list: any[];
 	index: number;
 	change: boolean;
+	loop: boolean;
 }
 
 export default Vue.extend({
@@ -57,6 +58,7 @@ export default Vue.extend({
 	data: (): PlayerSound => ({
 		style: 'green darken-2',
 		change: false,
+		loop: false,
 		index: 0,
 		list: [
 			require('../assets/musics/sound.mp3'),
@@ -105,6 +107,9 @@ export default Vue.extend({
 	},
 
 	methods: {
+		repeat() {
+			this.loop = !this.loop;
+		},
 		skipMusic(change: string) {
 			if (change === 'next') this.list.length - 1 > this.index && this.index++;
 			if (change === 'previous') this.index >= 1 && this.index--;
@@ -146,6 +151,11 @@ export default Vue.extend({
 					this.seek = 0;
 					this.timer = '0:00';
 					this.playing = false;
+					if (this.loop) {
+						this.sound.play();
+						this.playing = true;
+						this.duration = this.sound.duration();
+					}
 				});
 			}
 		},
@@ -190,5 +200,12 @@ export default Vue.extend({
 
 div.v-slider__track-container .v-slider--horizontal .v-slider__track-container {
 	height: 100% !important;
+}
+
+.container-slider {
+	padding: 0 20px;
+	span {
+		margin: 5px 10px 0;
+	}
 }
 </style>
