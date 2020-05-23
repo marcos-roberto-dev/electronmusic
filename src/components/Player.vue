@@ -21,9 +21,9 @@
 				<div class="player__controls">
 					<span>{{currentTime}}</span>
 					<v-icon class="player__button--replay" medium :color="style">replay</v-icon>
-					<v-icon large :color="style">skip_previous</v-icon>
-					<v-icon @click="playPause" x-large :color="style">play_circle_filled</v-icon>
-					<v-icon large :color="style">skip_next</v-icon>
+					<v-icon @click="() => skipMusic('previous')" large :color="style">skip_previous</v-icon>
+					<v-icon @keypress="playPause" @click="playPause" x-large :color="style">play_circle_filled</v-icon>
+					<v-icon @click="() => skipMusic('next')" large :color="style">skip_next</v-icon>
 					<v-icon class="player__button--volume_up" medium :color="style">volume_up</v-icon>
 					<span>{{totalTime}} {{playing}}</span>
 				</div>
@@ -35,7 +35,7 @@
 
 <script lang="ts">
 import Vue from 'vue';
-import { Howl } from 'howler';
+import { Howl, Howler } from 'howler';
 
 interface PlayerSound {
 	style: string;
@@ -44,25 +44,38 @@ interface PlayerSound {
 	timer: string;
 	duration: number;
 	seek: number;
-	mouseRef: any;
 	intervalWatch: number | NodeJS.Timeout;
 	intervalMount: number | NodeJS.Timeout;
+	list: any[];
+	index: number;
+	change: boolean;
 }
 
 export default Vue.extend({
 	name: 'Player',
+
 	data: (): PlayerSound => ({
 		style: 'green darken-2',
-		sound: new Howl({ src: require('../assets/musics/sound.mp3') }),
+		change: false,
+		index: 0,
+		list: [
+			require('../assets/musics/sound.mp3'),
+			require('../assets/musics/sound2.mp3'),
+		],
+		sound: new Howl({
+			src: [require('../assets/musics/sound.mp3')],
+		}),
 		playing: false,
 		timer: '0:00',
 		duration: 0,
 		seek: 0,
-		mouseRef: null,
 		intervalWatch: 0,
 		intervalMount: 0,
 	}),
 	watch: {
+		index() {
+			this.playPause();
+		},
 		playing(isPlay) {
 			if (isPlay) {
 				this.intervalWatch = setInterval(() => {
@@ -81,14 +94,6 @@ export default Vue.extend({
 		},
 	},
 
-	mounted() {
-		this.sound.on('end', () => {
-			this.seek = 0;
-			this.timer = '0:00';
-			this.playing = false;
-		});
-	},
-
 	computed: {
 		totalTime(): string {
 			return this.fancyTimeFormat(this.sound.duration());
@@ -100,10 +105,17 @@ export default Vue.extend({
 	},
 
 	methods: {
+		skipMusic(change: string) {
+			if (change === 'next') this.list.length - 1 > this.index && this.index++;
+			if (change === 'previous') this.index >= 1 && this.index--;
+			this.seek = 0;
+			this.timer = '0:00';
+			this.playing = false;
+			this.sound.pause();
+			this.change = true;
+		},
 		mouseEnter(event: any) {
 			this.playing = false;
-			// 	this.playing = true;
-			// }, 10000);
 		},
 
 		mouseLeave(event: any) {
@@ -121,10 +133,19 @@ export default Vue.extend({
 				this.sound.pause();
 				this.playing = false;
 			} else {
+				if (this.change) {
+					this.sound = new Howl({ src: this.list[this.index] });
+					this.change = false;
+				}
 				this.sound.play();
 				this.sound.on('play', () => {
 					this.playing = true;
 					this.duration = this.sound.duration();
+				});
+				this.sound.on('end', () => {
+					this.seek = 0;
+					this.timer = '0:00';
+					this.playing = false;
 				});
 			}
 		},
