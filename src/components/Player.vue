@@ -20,12 +20,31 @@
 
 			<div class="pb-5 white--text d-flex flex-row justify-space-between">
 				<div>album</div>
-				<div class="player__controls">
-					<v-icon @click="repeat" class="player__button--replay" medium :color="style">replay</v-icon>
+				<div class="player__controls" style="display: flex; justify-content: space-between">
+					<v-icon
+						@click="repeat"
+						class="player__button--replay"
+						medium
+						:color="style"
+					>{{changeIconRepeat}}</v-icon>
 					<v-icon @click="() => skipMusic('previous')" large :color="style">skip_previous</v-icon>
-					<v-icon @keypress="playPause" @click="playPause" x-large :color="style">play_circle_filled</v-icon>
+					<v-icon @keypress="playPause" @click="playPause" x-large :color="style">{{changeIconPlayPause}}</v-icon>
 					<v-icon @click="() => skipMusic('next')" large :color="style">skip_next</v-icon>
-					<v-icon class="player__button--volume_up" medium :color="style">volume_up</v-icon>
+					<span class="player__button--volume_container" style="display: flex; width: 100px">
+						<v-icon
+							@click="muteMusic"
+							class="player__button--volume_up"
+							medium
+							:color="style"
+						>{{changeIconVolume}}</v-icon>
+						<v-slider
+							v-model.number="volume"
+							class="slider__volume"
+							:max="100"
+							color="green"
+							track-color="grey"
+						></v-slider>
+					</span>
 				</div>
 				<div></div>
 			</div>
@@ -41,6 +60,8 @@ interface PlayerSound {
 	style: string;
 	sound: Howl;
 	playing: boolean;
+	volume: number;
+	mute: boolean;
 	timer: string;
 	duration: number;
 	seek: number;
@@ -67,6 +88,8 @@ export default Vue.extend({
 		sound: new Howl({
 			src: [require('../assets/musics/sound.mp3')],
 		}),
+		volume: 100,
+		mute: false,
 		playing: false,
 		timer: '0:00',
 		duration: 0,
@@ -76,6 +99,15 @@ export default Vue.extend({
 	}),
 
 	watch: {
+		mute(newValue) {
+			newValue ? (this.volume = 0) : (this.volume = 100);
+		},
+
+		volume() {
+			const value = this.volume / 100;
+			Howler.volume(value);
+		},
+
 		index() {
 			this.playPause();
 		},
@@ -90,6 +122,19 @@ export default Vue.extend({
 	},
 
 	computed: {
+		changeIconVolume(): string {
+			if (this.mute || this.volume === 0) return 'volume_off';
+			else return 'volume_up';
+		},
+
+		changeIconRepeat(): string {
+			return !this.loop ? 'repeat' : 'repeat_one';
+		},
+
+		changeIconPlayPause(): string {
+			return !this.playing ? 'play_circle_filled' : 'pause_circle_filled';
+		},
+
 		totalTime(): string {
 			return this.fancyTimeFormat(this.sound.duration());
 		},
@@ -111,6 +156,11 @@ export default Vue.extend({
 				this.playing = true;
 				this.duration = this.sound.duration();
 			});
+		},
+
+		muteMusic() {
+			this.mute = !this.mute;
+			Howler.mute(this.mute);
 		},
 
 		resetMusic() {
@@ -220,7 +270,7 @@ export default Vue.extend({
 
 <style lang="scss" scoped>
 .player__controls {
-	width: 50%;
+	width: 60%;
 
 	i {
 		cursor: pointer;
@@ -242,6 +292,12 @@ div.v-slider__track-container .v-slider--horizontal .v-slider__track-container {
 	padding: 0 20px;
 	span {
 		margin: 5px 10px 0;
+	}
+}
+
+.player__button--volume_container {
+	.slider__volume {
+		margin-top: 20px;
 	}
 }
 </style>
