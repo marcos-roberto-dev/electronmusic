@@ -239,7 +239,7 @@ export default Vue.extend({
 		},
 
 		handleMouseLeave() {
-			this.playing = true;
+			if (this.sound.playing()) this.playing = true;
 		},
 
 		handleSlide(e: any) {
