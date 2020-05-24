@@ -27,12 +27,12 @@
 						medium
 						:color="style"
 					>{{changeIconRepeat}}</v-icon>
-					<v-icon @click="() => skipMusic('previous')" large :color="style">skip_previous</v-icon>
+					<v-icon @click="() => skipSong('previous')" large :color="style">skip_previous</v-icon>
 					<v-icon @keypress="playPause" @click="playPause" x-large :color="style">{{changeIconPlayPause}}</v-icon>
-					<v-icon @click="() => skipMusic('next')" large :color="style">skip_next</v-icon>
+					<v-icon @click="() => skipSong('next')" large :color="style">skip_next</v-icon>
 					<span class="player__button--volume_container" style="display: flex; width: 100px">
 						<v-icon
-							@click="muteMusic"
+							@click="muteSong"
 							class="player__button--volume_up"
 							medium
 							:color="style"
@@ -145,7 +145,7 @@ export default Vue.extend({
 	},
 
 	methods: {
-		initMusic() {
+		initSong() {
 			if (this.change) {
 				this.sound = new Howl({ src: this.list[this.index] });
 				this.change = false;
@@ -158,56 +158,58 @@ export default Vue.extend({
 			});
 		},
 
-		muteMusic() {
+		muteSong() {
 			this.mute = !this.mute;
 			Howler.mute(this.mute);
 		},
 
-		resetMusic() {
+		resetSong() {
 			this.seek = 0;
 			this.timer = '0:00';
 			this.playing = false;
 		},
 
-		pauseMusic() {
+		pauseSong() {
 			this.sound.pause();
 			this.playing = false;
 		},
 
-		stopMusic() {
+		stopSong() {
 			this.sound.stop();
 			this.playing = false;
 		},
 
-		endMusic() {
-			this.sound.on('end', () => {
-				this.resetMusic();
-				if (this.list.length > 1) {
-					this.skipMusic('next');
-				}
+		repeatSong() {
+			if (this.loop) {
+				this.sound.play();
+				this.playing = true;
+				this.duration = this.sound.duration();
+			} else if (this.list.length > 1) {
+				this.skipSong('next');
+			}
+		},
 
-				if (this.loop) {
-					this.sound.play();
-					this.playing = true;
-					this.duration = this.sound.duration();
-				}
+		endSong() {
+			this.sound.on('end', () => {
+				this.resetSong();
+				this.repeatSong();
 			});
 		},
 
-		skipMusic(change: string) {
+		skipSong(change: string) {
 			if (change === 'next') this.list.length - 1 > this.index && this.index++;
 			if (change === 'previous') this.index >= 1 && this.index--;
-			this.resetMusic();
-			this.stopMusic();
+			this.resetSong();
+			this.stopSong();
 			this.change = true;
 		},
 
 		playPause() {
 			if (this.sound.playing()) {
-				this.pauseMusic();
+				this.pauseSong();
 			} else {
-				this.initMusic();
-				this.endMusic();
+				this.initSong();
+				this.endSong();
 			}
 		},
 
